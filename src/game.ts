@@ -3,8 +3,13 @@ import * as GUI from 'babylonjs-gui';
 
 import { Client, Room } from "colyseus.js";
 
+export interface Player {
+    entity: any,
+    targetPosition: BABYLON.Vector3
+}
+
 export interface Players {
-    [playerId: string]: any;
+    [playerId: string]: Player;
 }
 
 export default class Game {
@@ -27,14 +32,15 @@ export default class Game {
     initPlayers(): void {
         this._game.state.players.onAdd((player, sessionId) => {
             const capsule = BABYLON.MeshBuilder.CreateCapsule('player', {}, this._scene);
-            console.log(player);
-            capsule.position = new BABYLON.Vector3(player.x, .5, player.z);
-            this._players[sessionId] = capsule;
-
+            capsule.position = new BABYLON.Vector3(player.x, player.y, player.z);
+            this._players[sessionId] = {
+                entity: capsule,
+                targetPosition: new BABYLON.Vector3(player.x, player.y, player.z)
+            };
             player.onChange((changes) => {
-                const currentPosition = this._players[sessionId].position
-                this.move(this._players[sessionId], new BABYLON.Vector3(currentPosition.x, 0.5, currentPosition.z),
-                    new BABYLON.Vector3(changes.x, 0.5, changes.z));
+                this._players[sessionId].targetPosition.set(player.x, 0.5, player.z);
+                this.move(this._players[sessionId].entity, this._players[sessionId].entity.position,
+                    this._players[sessionId].targetPosition);
             })
         });
     }
@@ -53,10 +59,9 @@ export default class Game {
 
         this._scene.onPointerDown = function (event, pointer) {
             if(event.button == 0) {
-                const currentPosition = this._players[this._game.sessionId].position
-                 this.move(this._players[this._game.sessionId],
-                     new BABYLON.Vector3(currentPosition.x, 0.5, currentPosition.z),
-                     new BABYLON.Vector3(pointer.pickedPoint.x, 0.5, pointer.pickedPoint.z));
+                this._players[this._game.sessionId].targetPosition.set(pointer.pickedPoint.x, 0.5, pointer.pickedPoint.z);
+                this.move(this._players[this._game.sessionId].entity, this._players[this._game.sessionId].entity.position,
+                    this._players[this._game.sessionId].targetPosition);
                 this._game.send("updatePosition", {
                     x: pointer.pickedPoint.x,
                     y: 0.5,
@@ -69,7 +74,7 @@ export default class Game {
     }
 
     move(obj, startPosition, endPosition): void {
-        BABYLON.Animation.CreateAndStartAnimation("animate", obj, "position", 30, 30, startPosition, endPosition, BABYLON.Animation.ANIMATIONTYPE_VECTOR3);
+        BABYLON.Animation.CreateAndStartAnimation("animate", obj, "position", 30, 30, startPosition, endPosition, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
     }
 
     private doRender() : void {
