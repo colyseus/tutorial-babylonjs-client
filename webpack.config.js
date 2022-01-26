@@ -1,4 +1,6 @@
 const path = require('path')
+// webpack.config.js
+const Dotenv = require('dotenv-webpack');
 
 module.exports = {
     mode: "development",
@@ -13,7 +15,9 @@ module.exports = {
         extensions: ['.ts', 'tsx', '.js']
     },
     devtool: 'source-map',
-    plugins: [],
+    plugins: [
+        new Dotenv()
+    ],
     module: {
         rules: [{
             test: /\.tsx?$/,

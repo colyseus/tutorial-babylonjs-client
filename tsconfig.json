@@ -1,14 +1,15 @@
 {
   "compileOnSave": true,
   "compilerOptions": {
-    "target": "es5",
-    "module": "es2015",
+    "target": "es6",
+    "module": "commonjs",
     "sourceMap": true,
     "outDir": "./dist",
     "types": [
       "babylonjs",
       "babylonjs-gui",
-      "babylonjs-materials"
+      "babylonjs-materials",
+      "node"
     ]
   },
   "include": [

@@ -1,6 +1,10 @@
 import * as BABYLON from 'babylonjs';
 import * as GUI from 'babylonjs-gui';
+import { Client, Room } from "colyseus.js";
 import Game from './game';
+
+const ROOM_NAME = "StrawberryBubblegum";
+const SERVER = "wss://playcanvas-colyseus-demo.herokuapp.com";
 
 export default class Menu {
     private _canvas: HTMLCanvasElement;
@@ -9,6 +13,8 @@ export default class Menu {
     private _camera: BABYLON.FreeCamera;
     private _light: BABYLON.Light;
     private _advancedTexture: GUI.AdvancedDynamicTexture;
+
+    private _colyseus: Client = new Client(SERVER);
 
     constructor(canvasElement : string) {
         // Create canvas and engine.
@@ -25,10 +31,29 @@ export default class Menu {
         return button;
     }
 
-    private createGame(): void {
+    private async createGame(): Promise<void> {
+        const game = new Game(this._canvas, this._engine, await this._colyseus.joinOrCreate(ROOM_NAME));
+        this._scene.dispose();
+        await game.createGame();
+    }
+
+    createMenu() : void {
         // Create a basic BJS Scene object.
-        const game = new Game(this._canvas, this._engine);
-        this._scene = game.createGame();
+        this._scene = new BABYLON.Scene(this._engine);
+        this._camera = new BABYLON.FreeCamera("camera1", new BABYLON.Vector3(0, 5, -10), this._scene);
+        this._camera.setTarget(BABYLON.Vector3.Zero());
+        this._camera.attachControl(this._canvas, true);
+        this._advancedTexture = GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
+
+        const createGameButton = this.createMenuButton("createGame", "Create Game", "0");
+        createGameButton.onPointerClickObservable.add(async function () {
+            await this.createGame();
+        }.bind(this));
+
+        const joinGameButton = this.createMenuButton("joinGame", "Join Game", "70px");
+
+        const createOrJoinButton = this.createMenuButton("createOrJoinGame", "Create Or Join", "140px");
+
         this.doRender();
     }
 
@@ -42,25 +67,5 @@ export default class Menu {
         window.addEventListener('resize', () => {
             this._engine.resize();
         });
-    }
-
-    createMenu() : void {
-        // Create a basic BJS Scene object.
-        this._scene = new BABYLON.Scene(this._engine);
-        this._camera = new BABYLON.FreeCamera("camera1", new BABYLON.Vector3(0, 5, -10), this._scene);
-        this._camera.setTarget(BABYLON.Vector3.Zero());
-        this._camera.attachControl(this._canvas, true);
-        this._advancedTexture = GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
-
-        const createGameButton = this.createMenuButton("createGame", "Create Game", "0");
-        createGameButton.onPointerClickObservable.add(function () {
-            this.createGame();
-        }.bind(this));
-
-        const joinGameButton = this.createMenuButton("joinGame", "Join Game", "70px");
-
-        const createOrJoinButton = this.createMenuButton("createOrJoinGame", "Create Or Join", "140px");
-
-        this.doRender();
     }
 }
