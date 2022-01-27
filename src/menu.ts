@@ -31,10 +31,20 @@ export default class Menu {
         return button;
     }
 
-    private async createGame(): Promise<void> {
-        const game = new Game(this._canvas, this._engine, await this._colyseus.joinOrCreate(ROOM_NAME));
+    private async createGame(method: string): Promise<void> {
+        let game: Game;
+        switch (method) {
+            case "create":
+                game = new Game(this._canvas, this._engine, await this._colyseus.create(ROOM_NAME));
+                break;
+            case "join":
+                game = new Game(this._canvas, this._engine, await this._colyseus.join(ROOM_NAME));
+                break;
+            default:
+                game = new Game(this._canvas, this._engine, await this._colyseus.joinOrCreate(ROOM_NAME));
+        }
         this._scene.dispose();
-        await game.createGame();
+        game.bootstrap();
     }
 
     createMenu() : void {
@@ -47,12 +57,18 @@ export default class Menu {
 
         const createGameButton = this.createMenuButton("createGame", "Create Game", "0");
         createGameButton.onPointerClickObservable.add(async function () {
-            await this.createGame();
+            await this.createGame("create");
         }.bind(this));
 
         const joinGameButton = this.createMenuButton("joinGame", "Join Game", "70px");
+        joinGameButton.onPointerClickObservable.add(async function () {
+            await this.createGame("join");
+        }.bind(this));
 
         const createOrJoinButton = this.createMenuButton("createOrJoinGame", "Create Or Join", "140px");
+        createOrJoinButton.onPointerClickObservable.add(async function () {
+            await this.createGame("joinOrCreate");
+        }.bind(this));
 
         this.doRender();
     }

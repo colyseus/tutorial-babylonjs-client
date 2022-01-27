@@ -20,10 +20,10 @@ export default class Game {
     private _light: BABYLON.Light;
     private _advancedTexture: GUI.AdvancedDynamicTexture;
 
-    private _game: Room;
+    private _game: Room<any>;
     private _players: Players = {};
 
-    constructor(_canvas: HTMLCanvasElement, _engine: BABYLON.Engine, _game: Room) {
+    constructor(_canvas: HTMLCanvasElement, _engine: BABYLON.Engine, _game: Room<any>) {
         this._canvas = _canvas;
         this._engine = _engine;
         this._game = _game;
@@ -32,20 +32,24 @@ export default class Game {
     initPlayers(): void {
         this._game.state.players.onAdd((player, sessionId) => {
             const capsule = BABYLON.MeshBuilder.CreateCapsule('player', {}, this._scene);
-            capsule.position = new BABYLON.Vector3(player.x, player.y, player.z);
+            capsule.position.set(player.x, 0.5, player.z);
             this._players[sessionId] = {
                 entity: capsule,
-                targetPosition: new BABYLON.Vector3(player.x, player.y, player.z)
+                targetPosition: new BABYLON.Vector3(0, 0, 0)
             };
             player.onChange((changes) => {
-                this._players[sessionId].targetPosition.set(player.x, 0.5, player.z);
-                this.move(this._players[sessionId].entity, this._players[sessionId].entity.position,
-                    this._players[sessionId].targetPosition);
+                this._players[sessionId].targetPosition.set(player.x, player.y, player.z);
+                this.move(this._players[sessionId]);
             })
+        });
+
+        this._game.state.players.onRemove((player, playerId) => {
+            this._players[playerId].entity.dispose();
+            delete this._players[playerId];
         });
     }
 
-    async createGame(): Promise<void> {
+    bootstrap(): void {
         // Create a basic BJS Scene object.
         this._scene = new BABYLON.Scene(this._engine);
         this._light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(1, 1, 0), this._scene);
@@ -53,15 +57,14 @@ export default class Game {
         this._camera.setTarget(BABYLON.Vector3.Zero());
         this._camera.attachControl(this._canvas, true);
 
-        const ground = BABYLON.MeshBuilder.CreateGround("ground", {height: 8, width: 8, subdivisions: 4}, this._scene);;
+        const ground = BABYLON.MeshBuilder.CreateGround("ground", {height: 8, width: 8, subdivisions: 4}, this._scene);
 
         this.initPlayers();
 
         this._scene.onPointerDown = function (event, pointer) {
             if(event.button == 0) {
-                this._players[this._game.sessionId].targetPosition.set(pointer.pickedPoint.x, 0.5, pointer.pickedPoint.z);
-                this.move(this._players[this._game.sessionId].entity, this._players[this._game.sessionId].entity.position,
-                    this._players[this._game.sessionId].targetPosition);
+                this._players[this._game.sessionId].targetPosition = pointer.pickedPoint.clone();
+                this.move(this._players[this._game.sessionId]);
                 this._game.send("updatePosition", {
                     x: pointer.pickedPoint.x,
                     y: 0.5,
@@ -73,8 +76,10 @@ export default class Game {
         this.doRender();
     }
 
-    move(obj, startPosition, endPosition): void {
-        BABYLON.Animation.CreateAndStartAnimation("animate", obj, "position", 30, 30, startPosition, endPosition, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
+    move(player: Player): void {
+        BABYLON.Animation.CreateAndStartAnimation("animate", player.entity, "position",
+            60, 120, player.entity.position, player.targetPosition,
+            BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
     }
 
     private doRender() : void {
