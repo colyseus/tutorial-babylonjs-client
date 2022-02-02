@@ -10,7 +10,7 @@ export default class Menu {
     private _canvas: HTMLCanvasElement;
     private _engine: BABYLON.Engine;
     private _scene: BABYLON.Scene;
-    private _camera: BABYLON.FreeCamera;
+    private _camera: BABYLON.ArcRotateCamera;
     private _light: BABYLON.Light;
     private _advancedTexture: GUI.AdvancedDynamicTexture;
 
@@ -48,12 +48,30 @@ export default class Menu {
     }
 
     createMenu() : void {
-        // Create a basic BJS Scene object.
         this._scene = new BABYLON.Scene(this._engine);
-        this._camera = new BABYLON.FreeCamera("camera1", new BABYLON.Vector3(0, 5, -10), this._scene);
+        this._camera = new BABYLON.ArcRotateCamera("camera", Math.PI / 2, 1.0, 110, BABYLON.Vector3.Zero(), this._scene);
+        this._camera.useAutoRotationBehavior = true;
         this._camera.setTarget(BABYLON.Vector3.Zero());
         this._camera.attachControl(this._canvas, true);
         this._advancedTexture = GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
+
+        // Colyseus logo
+        const logo = new GUI.Image("ColyseusLogo", "./public/colyseus.png");
+        logo.horizontalAlignment = GUI.Control.HORIZONTAL_ALIGNMENT_CENTER;
+        logo.verticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_TOP - 10;
+        logo.height = "30%";
+        logo.width = "30%";
+        this._advancedTexture.addControl(logo);
+
+        // Skybox
+        const skybox = BABYLON.MeshBuilder.CreateBox("skyBox", {size:1000.0}, this._scene);
+        const skyboxMaterial = new BABYLON.StandardMaterial("skyBox", this._scene);
+        skyboxMaterial.backFaceCulling = false;
+        skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture("./public/textures/skybox", this._scene);
+        skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
+        skyboxMaterial.diffuseColor = new BABYLON.Color3(0, 0, 0);
+        skyboxMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
+        skybox.material = skyboxMaterial;
 
         const createGameButton = this.createMenuButton("createGame", "Create Game", "0");
         createGameButton.onPointerClickObservable.add(async function () {
