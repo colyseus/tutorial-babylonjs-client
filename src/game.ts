@@ -1,6 +1,8 @@
 import * as BABYLON from 'babylonjs';
 import * as GUI from 'babylonjs-gui';
-import { Room } from "colyseus.js";
+import {Room} from "colyseus.js";
+
+import Menu from "./menu";
 
 export interface Player {
     entity: any,
@@ -17,7 +19,6 @@ export default class Game {
     private _scene: BABYLON.Scene;
     private _camera: BABYLON.ArcRotateCamera;
     private _light: BABYLON.Light;
-    private _advancedTexture: GUI.AdvancedDynamicTexture;
 
     private _game: Room<any>;
     private _players: Players = {};
@@ -30,14 +31,17 @@ export default class Game {
 
     initPlayers(): void {
         this._game.state.players.onAdd((player, sessionId) => {
-            const sphere = BABYLON.MeshBuilder.CreateSphere(`player-${sessionId}`, {segments: 8, diameter: 16}, this._scene);
+            const sphere = BABYLON.MeshBuilder.CreateSphere(`player-${sessionId}`, {
+                segments: 8,
+                diameter: 16
+            }, this._scene);
             // Set player mesh properties
             const sphereMaterial = new BABYLON.StandardMaterial(`playerMat-${sessionId}`, this._scene);
-            sphereMaterial.emissiveColor = sessionId === this._game.sessionId? BABYLON.Color3.FromHexString("#ff9900"): BABYLON.Color3.Gray();
+            sphereMaterial.emissiveColor = sessionId === this._game.sessionId ? BABYLON.Color3.FromHexString("#ff9900") : BABYLON.Color3.Gray();
             sphere.material = sphereMaterial;
 
             // Set player spawning position
-            sphere.position.set(player.x, 0.5, player.z);
+            sphere.position.set(player.x, player.y, player.z);
             this._players[sessionId] = {
                 entity: sphere,
                 targetPosition: new BABYLON.Vector3(0, 0, 0)
@@ -52,11 +56,15 @@ export default class Game {
             this._players[playerId].entity.dispose();
             delete this._players[playerId];
         });
+
+        this._game.onLeave(code => {
+            this.gotoMenu();
+        })
     }
 
     createGround(): void {
         //Creation of a plane
-        const plane = BABYLON.MeshBuilder.CreatePlane("plane", {size:500}, this._scene);
+        const plane = BABYLON.MeshBuilder.CreatePlane("plane", {size: 500}, this._scene);
         plane.position.y = -8;
         plane.rotation.x = Math.PI / 2;
 
@@ -70,25 +78,47 @@ export default class Game {
         plane.material = materialPlane;
     }
 
-    displayGameTexts() {
+    displayGameControls() {
         const advancedTexture = GUI.AdvancedDynamicTexture.CreateFullscreenUI("textUI");
 
-        const roomName = new GUI.TextBlock("roomNameText");
-        roomName.text = `Room name: ${this._game.name}`;
-        roomName.color = "white";
-        roomName.fontSize = 24;
-        roomName.paddingBottom = 360;
-        roomName.paddingRight = 800;
+        const playerInfo = new GUI.TextBlock("playerInfo");
+        playerInfo.text = `Room name: ${this._game.name}      Player: ${this._game.sessionId}`;
+        playerInfo.color = "#eaeaea";
+        playerInfo.fontFamily = "Trajan Pro";
+        playerInfo.fontSize = 20;
+        playerInfo.textHorizontalAlignment = GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
+        playerInfo.textVerticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_TOP;
+        playerInfo.paddingTop = "10px";
+        playerInfo.paddingLeft = "10px";
+        playerInfo.outlineColor = "#000000";
+        advancedTexture.addControl(playerInfo);
 
-        const playerId = new GUI.TextBlock("playerIdText");
-        playerId.text = `Player ID: ${this._game.sessionId}`;
-        playerId.color = "white";
-        playerId.fontSize = 24;
-        playerId.paddingBottom = 300;
-        playerId.paddingRight = 800;
+        const instructions = new GUI.TextBlock("instructions");
+        instructions.text = "Click anywhere on the ground!";
+        instructions.color = "#fff000"
+        instructions.fontFamily = "Trajan Pro";
+        instructions.fontSize = 24;
+        instructions.textHorizontalAlignment = GUI.Control.HORIZONTAL_ALIGNMENT_CENTER;
+        instructions.textVerticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
+        instructions.paddingBottom = "10px";
+        advancedTexture.addControl(instructions);
 
-        advancedTexture.addControl(roomName);
-        advancedTexture.addControl(playerId);
+        // back to menu button
+        const button = GUI.Button.CreateImageWithCenterTextButton("back", "<- back", "./public/btn-default.png");
+        button.width = "100px";
+        button.height = "40px";
+        button.fontFamily = "Trajan Pro";
+        button.thickness = 0;
+        button.color = "#f8f8f8";
+        button.horizontalAlignment = GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT;
+        button.verticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_TOP;
+        button.paddingTop = "10px";
+        button.paddingRight = "10px";
+        button.onPointerClickObservable.add(async function () {
+            await this._game.leave(true);
+            this.gotoMenu();
+        }.bind(this));
+        advancedTexture.addControl(button);
     }
 
     bootstrap(): void {
@@ -96,7 +126,7 @@ export default class Game {
         this._light = new BABYLON.PointLight("pointLight", new BABYLON.Vector3(-60, 60, 80), this._scene);
 
         // Skybox
-        const skybox = BABYLON.MeshBuilder.CreateBox("skyBox", {size:1000.0}, this._scene);
+        const skybox = BABYLON.MeshBuilder.CreateBox("skyBox", {size: 1000.0}, this._scene);
         const skyboxMaterial = new BABYLON.StandardMaterial("skyBox", this._scene);
         skyboxMaterial.backFaceCulling = false;
         skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture("./public/textures/skybox", this._scene);
@@ -110,17 +140,28 @@ export default class Game {
         this._camera.attachControl(this._canvas, true);
 
         this.createGround();
-        this.displayGameTexts();
+        this.displayGameControls();
         this.initPlayers();
 
         this._scene.onPointerDown = function (event, pointer) {
-            if(event.button == 0) {
-                this._players[this._game.sessionId].targetPosition = pointer.pickedPoint.clone();
+            if (event.button == 0) {
+                const targetPosition = pointer.pickedPoint.clone();
+
+                // Position adjustments for the current play ground.
+                targetPosition.y = -1;
+                if(targetPosition.x > 245) targetPosition.x = 245;
+                else if(targetPosition.x < -245) targetPosition.x = -245;
+                if(targetPosition.z > 245) targetPosition.z = 245;
+                else if(targetPosition.z < -245) targetPosition.z = -245;
+
+                this._players[this._game.sessionId].targetPosition = targetPosition;
                 this.move(this._players[this._game.sessionId]);
+
+                // Send position update to the server
                 this._game.send("updatePosition", {
-                    x: pointer.pickedPoint.x,
-                    y: 0.5,
-                    z: pointer.pickedPoint.z,
+                    x: targetPosition.x,
+                    y: targetPosition.y,
+                    z: targetPosition.z,
                 });
             }
         }.bind(this);
@@ -134,7 +175,13 @@ export default class Game {
             BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
     }
 
-    private doRender() : void {
+    private gotoMenu() {
+        this._scene.dispose();
+        const menu = new Menu('renderCanvas');
+        menu.createMenu();
+    }
+
+    private doRender(): void {
         // Run the render loop.
         this._engine.runRenderLoop(() => {
             this._scene.render();
