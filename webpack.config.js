@@ -1,6 +1,6 @@
-const path = require('path')
 // webpack.config.js
-const Dotenv = require('dotenv-webpack');
+const path = require('path')
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 module.exports = {
     mode: "development",
@@ -16,7 +16,12 @@ module.exports = {
     },
     devtool: 'source-map',
     plugins: [
-        new Dotenv()
+        new CopyWebpackPlugin({
+            patterns: [
+                { from: 'public', to: 'public' },
+                { from: 'index.html'}
+            ]
+        })
     ],
     module: {
         rules: [{

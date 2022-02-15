@@ -3,6 +3,7 @@ import * as GUI from 'babylonjs-gui';
 import {Room} from "colyseus.js";
 
 import Menu from "./menu";
+import {createSkyBox} from "./utils";
 
 export interface Player {
     entity: any,
@@ -33,7 +34,7 @@ export default class Game {
         this._game.state.players.onAdd((player, sessionId) => {
             const sphere = BABYLON.MeshBuilder.CreateSphere(`player-${sessionId}`, {
                 segments: 8,
-                diameter: 16
+                diameter: 40
             }, this._scene);
             // Set player mesh properties
             const sphereMaterial = new BABYLON.StandardMaterial(`playerMat-${sessionId}`, this._scene);
@@ -46,7 +47,7 @@ export default class Game {
                 entity: sphere,
                 targetPosition: new BABYLON.Vector3(0, 0, 0)
             };
-            player.onChange((changes) => {
+            player.onChange(() => {
                 this._players[sessionId].targetPosition.set(player.x, player.y, player.z);
                 this.move(this._players[sessionId]);
             })
@@ -65,7 +66,7 @@ export default class Game {
     createGround(): void {
         //Creation of a plane
         const plane = BABYLON.MeshBuilder.CreatePlane("plane", {size: 500}, this._scene);
-        plane.position.y = -8;
+        plane.position.y = -15;
         plane.rotation.x = Math.PI / 2;
 
         let floorPlane = new BABYLON.StandardMaterial('floorTexturePlane', this._scene);
@@ -82,9 +83,9 @@ export default class Game {
         const advancedTexture = GUI.AdvancedDynamicTexture.CreateFullscreenUI("textUI");
 
         const playerInfo = new GUI.TextBlock("playerInfo");
-        playerInfo.text = `Room name: ${this._game.name}      Player: ${this._game.sessionId}`;
+        playerInfo.text = `Room name: ${this._game.name}      Player: ${this._game.sessionId}`.toUpperCase();
         playerInfo.color = "#eaeaea";
-        playerInfo.fontFamily = "Trajan Pro";
+        playerInfo.fontFamily = "Roboto";
         playerInfo.fontSize = 20;
         playerInfo.textHorizontalAlignment = GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
         playerInfo.textVerticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_TOP;
@@ -94,9 +95,9 @@ export default class Game {
         advancedTexture.addControl(playerInfo);
 
         const instructions = new GUI.TextBlock("instructions");
-        instructions.text = "Click anywhere on the ground!";
+        instructions.text = "CLICK ANYWHERE ON THE GROUND!";
         instructions.color = "#fff000"
-        instructions.fontFamily = "Trajan Pro";
+        instructions.fontFamily = "Roboto";
         instructions.fontSize = 24;
         instructions.textHorizontalAlignment = GUI.Control.HORIZONTAL_ALIGNMENT_CENTER;
         instructions.textVerticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
@@ -104,55 +105,43 @@ export default class Game {
         advancedTexture.addControl(instructions);
 
         // back to menu button
-        const button = GUI.Button.CreateImageWithCenterTextButton("back", "<- back", "./public/btn-default.png");
+        const button = GUI.Button.CreateImageWithCenterTextButton("back", "<- BACK", "./public/btn-default.png");
         button.width = "100px";
-        button.height = "40px";
-        button.fontFamily = "Trajan Pro";
+        button.height = "50px";
+        button.fontFamily = "Roboto";
         button.thickness = 0;
         button.color = "#f8f8f8";
         button.horizontalAlignment = GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT;
         button.verticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_TOP;
         button.paddingTop = "10px";
         button.paddingRight = "10px";
-        button.onPointerClickObservable.add(async function () {
+        button.onPointerClickObservable.add(async () => {
             await this._game.leave(true);
-            this.gotoMenu();
-        }.bind(this));
+        });
         advancedTexture.addControl(button);
     }
 
     bootstrap(): void {
         this._scene = new BABYLON.Scene(this._engine);
-        this._light = new BABYLON.PointLight("pointLight", new BABYLON.Vector3(-60, 60, 80), this._scene);
-
-        // Skybox
-        const skybox = BABYLON.MeshBuilder.CreateBox("skyBox", {size: 1000.0}, this._scene);
-        const skyboxMaterial = new BABYLON.StandardMaterial("skyBox", this._scene);
-        skyboxMaterial.backFaceCulling = false;
-        skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture("./public/textures/skybox", this._scene);
-        skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
-        skyboxMaterial.diffuseColor = new BABYLON.Color3(0, 0, 0);
-        skyboxMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
-        skybox.material = skyboxMaterial;
-
-        this._camera = new BABYLON.ArcRotateCamera("camera", Math.PI / 2, 1.0, 110, BABYLON.Vector3.Zero(), this._scene);
+        this._light = new BABYLON.HemisphericLight("pointLight", new BABYLON.Vector3(), this._scene);
+        this._camera = new BABYLON.ArcRotateCamera("camera", Math.PI / 2, 1.0, 550, BABYLON.Vector3.Zero(), this._scene);
         this._camera.setTarget(BABYLON.Vector3.Zero());
-        this._camera.attachControl(this._canvas, true);
 
+        createSkyBox(this._scene);
         this.createGround();
         this.displayGameControls();
         this.initPlayers();
 
-        this._scene.onPointerDown = function (event, pointer) {
+        this._scene.onPointerDown = (event, pointer) => {
             if (event.button == 0) {
                 const targetPosition = pointer.pickedPoint.clone();
 
                 // Position adjustments for the current play ground.
                 targetPosition.y = -1;
-                if(targetPosition.x > 245) targetPosition.x = 245;
-                else if(targetPosition.x < -245) targetPosition.x = -245;
-                if(targetPosition.z > 245) targetPosition.z = 245;
-                else if(targetPosition.z < -245) targetPosition.z = -245;
+                if (targetPosition.x > 245) targetPosition.x = 245;
+                else if (targetPosition.x < -245) targetPosition.x = -245;
+                if (targetPosition.z > 245) targetPosition.z = 245;
+                else if (targetPosition.z < -245) targetPosition.z = -245;
 
                 this._players[this._game.sessionId].targetPosition = targetPosition;
                 this.move(this._players[this._game.sessionId]);
@@ -164,7 +153,7 @@ export default class Game {
                     z: targetPosition.z,
                 });
             }
-        }.bind(this);
+        };
 
         this.doRender();
     }

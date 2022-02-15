@@ -10,8 +10,8 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@babylonjs/core": "^5.0.0-beta.5",
-    "@babylonjs/inspector": "^5.0.0-beta.5",
+    "@babylonjs/core": "preview",
+    "@babylonjs/inspector": "preview",
     "@types/node": "^17.0.12",
     "ts-loader": "^9.2.6",
     "typescript": "^4.5.4",
@@ -19,12 +19,13 @@
     "webpack-cli": "^4.9.1"
   },
   "dependencies": {
-    "babylonjs": "^5.0.0-beta.4",
-    "babylonjs-gui": "^5.0.0-beta.4",
-    "babylonjs-loaders": "^5.0.0-beta.4",
-    "babylonjs-materials": "^5.0.0-beta.5",
-    "babylonjs-procedural-textures": "^5.0.0-beta.5",
+    "babylonjs": "preview",
+    "babylonjs-gui": "preview",
+    "babylonjs-loaders": "preview",
+    "babylonjs-materials": "preview",
+    "babylonjs-procedural-textures": "preview",
     "colyseus.js": "^0.15.0-preview.2",
+    "copy-webpack-plugin": "^10.2.4",
     "dotenv-webpack": "^7.0.3"
   }
 }

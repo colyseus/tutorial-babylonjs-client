@@ -2,9 +2,10 @@ import * as BABYLON from 'babylonjs';
 import * as GUI from 'babylonjs-gui';
 import {Client} from "colyseus.js";
 import Game from './game';
+import {createSkyBox} from "./utils";
 
-const ROOM_NAME = "my_game";
-const SERVER = "wss://playcanvas-colyseus-demo.herokuapp.com";
+const ROOM_NAME = "my_room";
+const SERVER = "wss://colyseus-demo-server.herokuapp.com";
 
 export default class Menu {
     private _canvas: HTMLCanvasElement;
@@ -28,73 +29,87 @@ export default class Menu {
         this._camera = new BABYLON.ArcRotateCamera("camera", Math.PI / 2, 1.0, 110, BABYLON.Vector3.Zero(), this._scene);
         this._camera.useAutoRotationBehavior = true;
         this._camera.setTarget(BABYLON.Vector3.Zero());
-        this._camera.attachControl(this._canvas, true);
         this._advancedTexture = GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
 
+        createSkyBox(this._scene);
+
         // Colyseus logo
+        const controlBox = new GUI.Rectangle("controlBox");
+        controlBox.horizontalAlignment = GUI.Control.HORIZONTAL_ALIGNMENT_CENTER;
+        controlBox.verticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_TOP;
+        controlBox.height = "100%";
+        controlBox.width = "40%";
+        controlBox.thickness = 0;
+
         const logo = new GUI.Image("ColyseusLogo", "./public/colyseus.png");
         logo.horizontalAlignment = GUI.Control.HORIZONTAL_ALIGNMENT_CENTER;
         logo.verticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_TOP;
-        logo.paddingTop = "50px";
         logo.height = "40%";
-        logo.width = "30%";
-        this._advancedTexture.addControl(logo);
+        logo.paddingTop = "10px";
+        logo.stretch = GUI.Image.STRETCH_UNIFORM;
+        controlBox.addControl(logo);
 
-        // Skybox
-        const skybox = BABYLON.MeshBuilder.CreateBox("skyBox", {size: 1000.0}, this._scene);
-        const skyboxMaterial = new BABYLON.StandardMaterial("skyBox", this._scene);
-        skyboxMaterial.backFaceCulling = false;
-        skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture("./public/textures/skybox", this._scene);
-        skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
-        skyboxMaterial.diffuseColor = new BABYLON.Color3(0, 0, 0);
-        skyboxMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
-        skybox.material = skyboxMaterial;
+        // Button positioning
+        const stackPanel = new GUI.StackPanel();
+        stackPanel.isVertical = true;
+        stackPanel.height = "50%";
+        stackPanel.horizontalAlignment = GUI.Control.HORIZONTAL_ALIGNMENT_CENTER;
+        stackPanel.verticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
 
-        const createGameButton = this.createMenuButton("createGame", "Create Game", "0");
-        createGameButton.onPointerClickObservable.add(async function () {
+        const createGameButton = this.createMenuButton("createGame", "CREATE GAME");
+        createGameButton.onPointerClickObservable.add(async () => {
             this.swapControls(false);
             await this.createGame("create");
-        }.bind(this));
+        });
+        stackPanel.addControl(createGameButton);
 
-        const joinGameButton = this.createMenuButton("joinGame", "Join Game", "70px");
-        joinGameButton.onPointerClickObservable.add(async function () {
+        const joinGameButton = this.createMenuButton("joinGame", "JOIN GAME");
+        joinGameButton.onPointerClickObservable.add(async () => {
             this.swapControls(false);
             await this.createGame("join");
-        }.bind(this));
+        });
+        stackPanel.addControl(joinGameButton);
 
-        const createOrJoinButton = this.createMenuButton("createOrJoinGame", "Create Or Join", "140px");
-        createOrJoinButton.onPointerClickObservable.add(async function () {
+        const createOrJoinButton = this.createMenuButton("createOrJoinGame", "CREATE OR JOIN");
+        createOrJoinButton.onPointerClickObservable.add(async () => {
             this.swapControls(false);
             await this.createGame("joinOrCreate");
-        }.bind(this));
+        });
+        stackPanel.addControl(createOrJoinButton);
+
+        controlBox.addControl(stackPanel);
+
+        this._advancedTexture.addControl(controlBox);
 
         this.initLoadingMessageBox();
         this.initErrorMessageBox();
+        this.swapLoadingMessageBox(false);
+        this.swapErrorMessageBox(false);
 
         this.doRender();
     }
 
-    private createMenuButton(name: string, text: string, topPadding: string): GUI.Button {
+    private createMenuButton(name: string, text: string): GUI.Button {
         const button = GUI.Button.CreateImageWithCenterTextButton(name, text, "./public/btn-default.png");
-        button.width = "200px";
-        button.height = "50px";
-        button.top = topPadding;
-        button.fontFamily = "Trajan Pro";
+        button.width = "45%";
+        button.height = "55px";
+        button.fontFamily = "Roboto";
+        button.fontSize = "6%";
         button.thickness = 0;
+        button.paddingTop = "10px"
         button.color = "#c0c0c0";
-        this._advancedTexture.addControl(button);
         return button;
     }
 
     private swapControls(isEnabled: boolean) {
-        for(let btn of this._advancedTexture.getControlsByType("Button")) {
+        for (let btn of this._advancedTexture.getControlsByType("Button")) {
             btn.isEnabled = isEnabled;
         }
     }
 
     private async createGame(method: string): Promise<void> {
         let game: Game;
-        try{
+        try {
             switch (method) {
                 case "create":
                     this.swapLoadingMessageBox(true);
@@ -134,15 +149,12 @@ export default class Menu {
         loadingMessage.background = "#131313";
 
         const loadingText = new GUI.TextBlock("loadingText");
-        loadingText.text = "Loading..."
-        loadingText.fontFamily = "Trajan Pro";
+        loadingText.text = "LOADING..."
+        loadingText.fontFamily = "Roboto";
         loadingText.color = "#fad836";
         loadingText.fontSize = "30px";
         loadingMessage.addControl(loadingText);
 
-        // Disabled at initial screen loading
-        loadingMessage.isEnabled = false;
-        loadingMessage.alpha = 0;
         this._advancedTexture.addControl(loadingMessage);
     }
 
@@ -151,30 +163,26 @@ export default class Menu {
         errorMessageBox.thickness = 0;
         errorMessageBox.background = "#131313";
 
-        this._errorMessage.fontFamily = "Trajan Pro";
+        this._errorMessage.fontFamily = "Roboto";
         this._errorMessage.color = "#ff1616";
         this._errorMessage.fontSize = "20px";
         this._errorMessage.textWrapping = true;
         errorMessageBox.addControl(this._errorMessage);
 
-        const button = GUI.Button.CreateImageWithCenterTextButton("tryAgainButton", "<- Try Again", "./public/btn-default.png");
+        const button = GUI.Button.CreateImageWithCenterTextButton("tryAgainButton", "<- TRY AGAIN", "./public/btn-default.png");
         button.width = "200px";
-        button.height = "50px";
-        button.fontFamily = "Trajan Pro";
+        button.height = "60px";
+        button.fontFamily = "Roboto";
         button.thickness = 0;
         button.color = "#c0c0c0";
         button.verticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
         button.paddingBottom = "20px";
-        button.onPointerClickObservable.add(function () {
+        button.onPointerClickObservable.add(() => {
             this.swapControls(true);
             this.swapLoadingMessageBox(false);
             this.swapErrorMessageBox(false);
-        }.bind(this));
+        });
         errorMessageBox.addControl(button);
-
-        // Disabled at initial screen loading
-        errorMessageBox.isEnabled = false;
-        errorMessageBox.alpha = 0;
 
         this._advancedTexture.addControl(errorMessageBox);
     }
@@ -182,7 +190,7 @@ export default class Menu {
     private swapLoadingMessageBox(isEnabled: boolean) {
         const messageBox = this._advancedTexture.getControlByName("messageBox");
         messageBox.isEnabled = isEnabled;
-        messageBox.alpha = isEnabled? 0.75: 0;
+        messageBox.alpha = isEnabled ? 0.75 : 0;
     }
 
     private swapErrorMessageBox(isEnabled: boolean) {
@@ -191,6 +199,6 @@ export default class Menu {
         const messageBox = this._advancedTexture.getControlByName("errorMessageBox");
         this._advancedTexture.getControlByName("tryAgainButton").isEnabled = true;
         messageBox.isEnabled = isEnabled;
-        messageBox.alpha = isEnabled? 0.75: 0;
+        messageBox.alpha = isEnabled ? 0.75 : 0;
     }
 }
