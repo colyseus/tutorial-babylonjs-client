@@ -1,11 +1,13 @@
 import * as BABYLON from 'babylonjs';
 import * as GUI from 'babylonjs-gui';
-import {Client} from "colyseus.js";
+import { Client } from "colyseus.js";
+
 import Game from './game';
-import {createSkyBox} from "./utils";
+import { createSkyBox } from "./utils";
 
 const ROOM_NAME = "my_room";
-const SERVER = "wss://colyseus-demo-server.herokuapp.com";
+const ENDPOINT = "ws://localhost:2567";
+// const ENDPOINT = "wss://colyseus-demo-server.herokuapp.com";
 
 export default class Menu {
     private _canvas: HTMLCanvasElement;
@@ -14,7 +16,7 @@ export default class Menu {
     private _camera: BABYLON.ArcRotateCamera;
     private _advancedTexture: GUI.AdvancedDynamicTexture;
 
-    private _colyseus: Client = new Client(SERVER);
+    private _colyseus: Client = new Client(ENDPOINT);
 
     private _errorMessage: GUI.TextBlock = new GUI.TextBlock("errorText");
 
