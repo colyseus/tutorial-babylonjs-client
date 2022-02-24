@@ -7,7 +7,7 @@ import { createSkyBox } from "./utils";
 
 const ROOM_NAME = "my_room";
 const ENDPOINT = "ws://localhost:2567";
-// const ENDPOINT = "wss://colyseus-demo-server.herokuapp.com";
+// const ENDPOINT = "wss://tutorial-babylonjs-server.glitch.me";
 
 export default class Menu {
     private _canvas: HTMLCanvasElement;
